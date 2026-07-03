@@ -1,0 +1,14 @@
+1 - Dockerization and Testing With Docker-Compose [Done]
+
+2 - Terraform building [in-progress]
+    --> Workspaces - Testing Modules
+
+3 - CI Terraform [in-progress]
+    --> Secure The AWS Credentials in Repo Secrets Vault
+    --> Testing The Arch.
+
+4 - Build The EKS Cluster Arch internally
+    --> [Deployments - Service - Secrtes - Ingress , Prometheus , Grafana , ArgoCD Using Helm Charts ]
+    --> [Testing Response]
+
+5 - ArgoCD Application Creation Intergrating With External Repo For K8s Artifacts and Files and ECR [AWS Registr]
