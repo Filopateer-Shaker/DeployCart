@@ -1,0 +1,62 @@
+# monitoring-app.yaml
+# Argo CD Application using the "multiple sources" feature: pulls the
+# kube-prometheus-stack chart straight from its Helm repo, and layers the
+# values file that lives in this gitops repo on top of it. Put this file in
+# your gitops repo under argocd/ alongside the other *-app.yaml files, and
+# point your root Argo CD "app of apps" (or `kubectl apply -f`) at it once.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: "65.x"   # pin to whatever version you test with
+      helm:
+        valueFiles:
+          - $values/monitoring/prometheus-values.yaml
+    - repoURL: <YOUR_GITOPS_REPO_URL>
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+
+---
+# Grafana dashboards and alert rules are plain Kubernetes manifests
+# (ConfigMaps with the grafana_dashboard label / PrometheusRule CRDs), so they
+# ship as a second, lightweight Argo CD Application watching the same repo
+# in directory mode. If you'd rather fold these into the Helm app above via
+# grafana.dashboards / additionalPrometheusRulesMap in values.yaml, that also
+# works - this split just keeps the Helm app and the raw manifests independent.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-extras
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: <YOUR_GITOPS_REPO_URL>
+    targetRevision: main
+    path: monitoring/alerts
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

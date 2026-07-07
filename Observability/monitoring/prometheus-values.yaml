@@ -1,0 +1,123 @@
+# prometheus-values.yaml
+# Helm values for the "kube-prometheus-stack" chart (prometheus-community repo).
+# Deployed via Argo CD as a Helm source pointing at this file (see argocd/monitoring-app.yaml).
+#
+# Cost-control notes (project Mandatory Cost Rules):
+# - single small node in the cluster -> every request/limit below is intentionally small
+# - no extra Load Balancers -> prometheus/grafana/alertmanager stay ClusterIP, access via port-forward
+# - small storage only
+
+fullnameOverride: kube-prometheus-stack
+
+prometheus:
+  prometheusSpec:
+    replicas: 1
+    retention: 7d
+    retentionSize: "4GB"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 400Mi
+      limits:
+        cpu: 500m
+        memory: 800Mi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 8Gi
+    # Let Prometheus auto-discover ServiceMonitors/PodMonitors created by other
+    # workers (frontend/backend/mongodb apps) instead of only ones matching this
+    # Helm release's own labels.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    # No additionalScrapeConfigs needed for CI anymore: GitHub Actions runs on
+    # GitHub's own SaaS runners, so there's nothing in-cluster or on our VPC
+    # to scrape for build metrics. Pipeline health is tracked instead through
+    # Argo CD's own Prometheus metrics (sync status, health status), which
+    # get auto-discovered because serviceMonitorSelectorNilUsesHelmValues is
+    # false above - as long as Worker 3 installed Argo CD with
+    # `metrics.enabled: true` / `metrics.serviceMonitor.enabled: true` in its
+    # own Helm values, no extra config is needed here.
+  service:
+    type: ClusterIP
+
+alertmanager:
+  alertmanagerSpec:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 100Mi
+      limits:
+        cpu: 200m
+        memory: 200Mi
+  config:
+    route:
+      receiver: "null"
+      group_by: ["alertname", "namespace"]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 3h
+    receivers:
+      - name: "null"
+    # TODO: swap the "null" receiver for a Slack/email webhook if there's time
+    # before the demo. Alerts still fire and show up in the Alertmanager UI
+    # even without a receiver configured.
+  service:
+    type: ClusterIP
+
+grafana:
+  enabled: true
+  replicas: 1
+  # Never commit a real password. Set at install time:
+  #   helm upgrade --install ... --set grafana.adminPassword=$GRAFANA_ADMIN_PASSWORD
+  # or better, reference a Kubernetes Secret via grafana.admin.existingSecret.
+  adminPassword: ""
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  persistence:
+    enabled: true
+    size: 2Gi
+    storageClassName: gp3
+  service:
+    type: ClusterIP
+    # access with: kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+      folderAnnotation: grafana_folder
+      provider:
+        foldersFromFilesStructure: true
+    datasources:
+      enabled: true
+
+nodeExporter:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true
+
+defaultRules:
+  create: true
+  rules:
+    # Turn off the heavier default rule groups (control-plane / etcd) since
+    # this is a single managed EKS node group with no self-managed etcd/API
+    # server to alert on. Our own lightweight rules live in
+    # monitoring/alerts/basic-alert-rules.yaml
+    kubeApiserverAvailability: false
+    kubeApiserverSlos: false
+    etcd: false
+    kubeScheduler: false
+    kubeControllerManager: false
