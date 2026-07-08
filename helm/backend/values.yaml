@@ -1,0 +1,56 @@
+replicaCount: 1
+
+image:
+  repository: REPLACE_BACKEND_ECR_URI
+  tag: REPLACE_IMAGE_TAG
+  pullPolicy: IfNotPresent
+
+containerPort: 5000
+
+service:
+  type: ClusterIP
+  port: 5000
+  targetPort: 5000
+
+ingress:
+  enabled: true
+  className: nginx
+  host: ""
+  path: /api
+  pathType: Prefix
+
+mongodb:
+  secretName: deploycart-backend-secret
+  secretKey: mongo-uri
+  envName: MONGO_URI
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+readinessProbe:
+  enabled: true
+  path: /health
+  initialDelaySeconds: 10
+  periodSeconds: 10
+
+livenessProbe:
+  enabled: true
+  path: /health
+  initialDelaySeconds: 20
+  periodSeconds: 20
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+
+serviceAccount:
+  create: true
+  name: backend-sa
+  automountServiceAccountToken: false

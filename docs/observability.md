@@ -1,4 +1,4 @@
-# Worker 4 — Monitoring, Security & Observability
+# Worker 4 â€” Monitoring, Security & Observability
 
 Updated for the current stack: **GitHub Actions** (not Jenkins) for CI, **MongoDB
 Atlas** (not an in-cluster StatefulSet) for the database, everything deployed
@@ -27,12 +27,12 @@ gitops-repo/
 ```
 
 ## What changed from the original Jenkins/in-cluster-MongoDB version
-- **No Jenkins scrape target** — GitHub Actions runs on GitHub's own SaaS
+- **No Jenkins scrape target** â€” GitHub Actions runs on GitHub's own SaaS
   runners, so there's nothing in your VPC to point Prometheus at. Instead,
   the CD half of the pipeline (Argo CD syncing what GitHub Actions pushed)
-  is tracked via Argo CD's own Prometheus metrics — see
+  is tracked via Argo CD's own Prometheus metrics â€” see
   `cd-pipeline-dashboard.json`.
-- **No `database` namespace** — MongoDB is Atlas, fully managed and outside
+- **No `database` namespace** â€” MongoDB is Atlas, fully managed and outside
   the cluster. There's no StatefulSet/PVC/Secret/NetworkPolicy for it in
   this repo anymore. The backend's NetworkPolicy instead allows egress to
   the internet on port 27017 (Atlas resolves to Atlas-managed IPs, not a
@@ -40,15 +40,16 @@ gitops-repo/
 - **RBAC has no `database` namespace role** for the same reason.
 
 ## Before you apply anything
-Replace these placeholders:
-- `<YOUR_GITOPS_REPO_URL>` in both `argocd/*-app.yaml` files
-- The `team-viewers` / `team-admins` group names in `security/rbac.yaml` to match
-  whatever's actually in your `aws-auth` ConfigMap
+Review these settings:
+- GitOps repository URLs in `argocd/*-app.yaml` are configured as:
+  `https://github.com/Filopateer-Shaker/DeployCart.git`
+- Replace the `team-viewers` / `team-admins` group names in `security/rbac.yaml`
+  to match the groups configured for your EKS cluster.
 
 And set up outside this repo:
 - A Kubernetes Secret in the `backend` namespace holding the Atlas
   `mongodb+srv://` connection string (referenced by the backend Deployment
-  as an env var — that manifest is Worker 3's, this repo just documents the
+  as an environment variable; that manifest is Worker 3's, this repo just documents the
   expectation in `security-checklist.md`)
 - Atlas project Network Access List entry for the EKS node's egress IP
 - GitHub repository secrets: Docker Hub creds, the gitops-repo push token,
@@ -72,7 +73,7 @@ And set up outside this repo:
    kubectl get applications -n argocd
    ```
 
-## Grafana dashboards — how they get loaded
+## Grafana dashboards â€” how they get loaded
 `sidecar.dashboards.enabled: true` in `prometheus-values.yaml` makes Grafana
 watch for ConfigMaps labeled `grafana_dashboard: "1"` in any namespace. Wrap
 each dashboard JSON in a ConfigMap before committing:
@@ -110,12 +111,12 @@ kubectl get prometheusrule -n monitoring
 
 ## Tracking the GitHub Actions side
 GitHub Actions build/test/scan status is visible on the repo's **Actions**
-tab and via status badges in the README — Prometheus isn't the right tool
+tab and via status badges in the README â€” Prometheus isn't the right tool
 for that since there's no long-running process to scrape. What Prometheus
 *does* give visibility into is the outcome that actually matters for the
 demo: did the image that GitHub Actions built actually make it onto EKS
-healthy — that's what `cd-pipeline-dashboard.json` and the
+healthy â€” that's what `cd-pipeline-dashboard.json` and the
 `ArgoCDAppOutOfSync` / `ArgoCDAppUnhealthy` alerts cover.
 
 ## Definition of done for this scope
-See the bottom of `security-checklist.md` — mirrors Section 23 of the main plan.
+See the bottom of `security-checklist.md` â€” mirrors Section 23 of the main plan.
