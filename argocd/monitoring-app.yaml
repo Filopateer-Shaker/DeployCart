@@ -20,7 +20,7 @@ spec:
       helm:
         valueFiles:
           - $values/monitoring/prometheus-values.yaml
-    - repoURL: <YOUR_GITOPS_REPO_URL>
+    - repoURL: https://github.com/Filopateer-Shaker/DeployCart.git
       targetRevision: main
       ref: values
   destination:
@@ -50,7 +50,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: <YOUR_GITOPS_REPO_URL>
+    repoURL: https://github.com/Filopateer-Shaker/DeployCart.git
     targetRevision: main
     path: monitoring/alerts
   destination:
