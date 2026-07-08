@@ -1,0 +1,51 @@
+replicaCount: 1
+
+image:
+  repository: REPLACE_FRONTEND_ECR_URI
+  tag: REPLACE_IMAGE_TAG
+  pullPolicy: IfNotPresent
+
+containerPort: 3000
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 3000
+
+ingress:
+  enabled: true
+  className: nginx
+  host: ""
+  path: /
+  pathType: Prefix
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 300m
+    memory: 256Mi
+
+readinessProbe:
+  enabled: true
+  path: /
+  initialDelaySeconds: 10
+  periodSeconds: 10
+
+livenessProbe:
+  enabled: true
+  path: /
+  initialDelaySeconds: 20
+  periodSeconds: 20
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+
+serviceAccount:
+  create: true
+  name: frontend-sa
+  automountServiceAccountToken: false
