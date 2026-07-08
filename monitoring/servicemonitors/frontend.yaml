@@ -11,7 +11,7 @@ spec:
     - frontend
   selector:
     matchLabels:
-      app: frontend
+      monitoring: enabled
   endpoints:
   - port: http
     path: /metrics

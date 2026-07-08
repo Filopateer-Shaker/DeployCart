@@ -66,7 +66,8 @@ Status legend: `[ ]` not done · `[x]` done · `[~]` partial / demo-acceptable s
 ## 7. Cost Control (cross-check against Section 4 of the plan)
 - [ ] Single region, single EKS cluster, single managed node group
 - [ ] Prometheus/Grafana/Alertmanager storage kept small (see `prometheus-values.yaml`)
-- [ ] No extra Load Balancers created for monitoring — Grafana reached via port-forward
+- [ ] No extra Load Balancers created for monitoring — Grafana reached via the existing
+      ingress-nginx LB at `/grafana` (see `monitoring/grafana-ingress.yaml`), not a new LB
 - [ ] GitHub Actions minutes usage checked against the plan/org's free-tier limit (public repos are unlimited; private repos are metered)
 - [ ] MongoDB Atlas is on the free (M0) or lowest shared tier unless there's a specific reason to pay for more
 - [ ] Plan in place to `terraform destroy` after the final demo

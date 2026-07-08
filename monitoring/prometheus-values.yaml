@@ -4,7 +4,10 @@
 #
 # Cost-control notes (project Mandatory Cost Rules):
 # - single small node in the cluster -> every request/limit below is intentionally small
-# - no extra Load Balancers -> prometheus/grafana/alertmanager stay ClusterIP, access via port-forward
+# - no extra Load Balancers -> prometheus/alertmanager stay ClusterIP (port-forward only);
+#   Grafana is ClusterIP too, exposed at /grafana through the existing NGINX ingress
+#   controller's shared AWS Load Balancer (see monitoring/grafana-ingress.yaml) - no
+#   new LoadBalancer or custom domain needed
 # - small storage only
 
 fullnameOverride: kube-prometheus-stack
@@ -12,15 +15,15 @@ fullnameOverride: kube-prometheus-stack
 prometheus:
   prometheusSpec:
     replicas: 1
-    retention: 7d
-    retentionSize: "4GB"
+    retention: 3d
+    retentionSize: "3GB"
     resources:
       requests:
-        cpu: 100m
-        memory: 400Mi
+        cpu: 75m
+        memory: 300Mi
       limits:
-        cpu: 500m
-        memory: 800Mi
+        cpu: 300m
+        memory: 500Mi
     storageSpec:
       volumeClaimTemplate:
         spec:
@@ -51,11 +54,11 @@ alertmanager:
     replicas: 1
     resources:
       requests:
-        cpu: 50m
-        memory: 100Mi
+        cpu: 25m
+        memory: 64Mi
       limits:
-        cpu: 200m
-        memory: 200Mi
+        cpu: 100m
+        memory: 128Mi
   config:
     route:
       receiver: "null"
@@ -78,20 +81,22 @@ grafana:
   #   helm upgrade --install ... --set grafana.adminPassword=$GRAFANA_ADMIN_PASSWORD
   # or better, reference a Kubernetes Secret via grafana.admin.existingSecret.
   adminPassword: ""
+  defaultDashboardsEnabled: true
   resources:
     requests:
-      cpu: 50m
-      memory: 128Mi
+      cpu: 30m
+      memory: 96Mi
     limits:
-      cpu: 200m
-      memory: 256Mi
+      cpu: 150m
+      memory: 192Mi
   persistence:
     enabled: true
     size: 2Gi
     storageClassName: gp3
   service:
     type: ClusterIP
-    # access with: kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
+    # exposed externally via monitoring/grafana-ingress.yaml at /grafana
+    # (through the same AWS Load Balancer as the NGINX ingress controller)
   sidecar:
     dashboards:
       enabled: true
@@ -102,6 +107,10 @@ grafana:
         foldersFromFilesStructure: true
     datasources:
       enabled: true
+  grafana.ini:
+    server:
+      root_url: "%(protocol)s://%(domain)s/grafana"
+      serve_from_sub_path: true
 
 nodeExporter:
   enabled: true

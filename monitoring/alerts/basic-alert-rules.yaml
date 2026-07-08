@@ -92,19 +92,29 @@ spec:
         # so there's no in-cluster pod/namespace to run an `up{}` check
         # against. Atlas has its own built-in alerting (connections, CPU,
         # disk, replication lag) - enable that in the Atlas project UI
-        # instead of duplicating it here. What we CAN alert on from here is
-        # whether the backend itself can reach the database - see
-        # BackendUnhealthy below if the backend exposes a /health endpoint
-        # that checks its DB connection.
+        # instead of duplicating it here.
+        #
+        # No blackbox-exporter in this project (see Decisions Made), so
+        # health is inferred from kube-state-metrics instead of a synthetic
+        # probe: are the Deployments actually reporting available replicas.
 
-        - alert: BackendUnhealthy
-          expr: probe_success{job="backend-health"} == 0
+        - alert: FrontendDeploymentReplicasUnavailable
+          expr: kube_deployment_status_replicas_available{namespace="frontend", deployment="frontend"} == 0
           for: 3m
           labels:
             severity: critical
           annotations:
-            summary: "Backend health check failing"
-            description: "Backend /health endpoint has been failing for 3 minutes - often means it lost its connection to MongoDB Atlas. Requires the blackbox-exporter probe described in monitoring/README.md; remove this rule if that probe isn't set up."
+            summary: "Frontend deployment has zero available replicas"
+            description: "The frontend Deployment has had 0 available replicas for 3 minutes."
+
+        - alert: BackendDeploymentReplicasUnavailable
+          expr: kube_deployment_status_replicas_available{namespace="backend", deployment="backend"} == 0
+          for: 3m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Backend deployment has zero available replicas"
+            description: "The backend Deployment has had 0 available replicas for 3 minutes - often follows a crash loop or a failed rollout, possibly caused by losing its MongoDB Atlas connection on startup."
 
     - name: argocd.rules
       rules:
